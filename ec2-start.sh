@@ -7,7 +7,6 @@ cd aws-iot-sim-device/
 
 # setup AWS credentials
 cp -r src/aws_config/ ~/.aws
-aws configure
 
 # start sim app
 bash start_device.sh

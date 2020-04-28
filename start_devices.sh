@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # debugging
-# set -x
+set -x
 
 # install necessery libraries
 echo "Install libraries"
@@ -71,6 +71,7 @@ do
 
     # Attache certificate to thing
     aws iot attach-thing-principal --thing-name $device_name --principal $cert_arn
+    echo "Created thing ($device_name)"
 
     nohup python3 device.py -e $endpoint -r "AmazonRootCA1.pem" -c "certificate.pem" -k "private.key" -id $(jq -r ".thingId" thing_info.json) -t "data" -n $(jq -r ".thingName" thing_info.json) &
 
