@@ -1,0 +1,24 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": [
+          "iot:Connect"
+        ],
+        "Resource": [
+          "arn:aws:iot:eu-west-1:580868056031:client/${iot:ClientId}"
+        ]
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "iot:Publish"
+        ],
+        "Resource": [
+          "arn:aws:iot:eu-west-1:580868056031:topic/data/*"
+        ]
+      }
+    ]
+}
+  
