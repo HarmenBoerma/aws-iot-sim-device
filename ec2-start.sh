@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Get sim app
 sudo yum install git -y
 git clone https://github.com/HarmenBoerma/aws-iot-sim-device.git
