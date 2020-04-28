@@ -5,8 +5,8 @@
 
 # install necessery libraries
 echo "Install libraries"
-# sudo apt install jq -y
-# sudo apt install python3 -y
+sudo apt yum jq -y
+sudo apt yum python3 -y
 
 echo "Start device simulator"
 # echo "How many device do I need to spin up?"
@@ -18,7 +18,7 @@ root_folder=$PWD
 cd src
 
 # setup aws cli
-cp -r aws_config/ ~/aws
+cp -r aws_config/ ~/.aws
 
 # get endpoint
 if ! test -f "endpoint.json"; then
