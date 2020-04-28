@@ -9,4 +9,4 @@ cd aws-iot-sim-device/
 cp -r src/aws_config/ ~/.aws
 
 # start sim app
-bash start_device.sh
+bash start_devices.sh
