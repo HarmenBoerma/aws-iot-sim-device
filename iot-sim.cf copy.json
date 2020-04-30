@@ -56,7 +56,7 @@
                             {
                                 "Effect": "Allow",
                                 "Action": [
-                                    "iot:*"
+                                    "iot:*", "ec2:*"
                                 ],
                                 "Resource": "*"
                             }

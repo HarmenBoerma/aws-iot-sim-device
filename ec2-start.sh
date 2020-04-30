@@ -19,7 +19,7 @@ Content-Disposition: attachment; filename='userdata.txt'
 
 #!/bin/bash
 # Get sim app
-sudo apt install git -y
+sudo yum install git -y
 git clone https://github.com/HarmenBoerma/aws-iot-sim-device.git
 cd aws-iot-sim-device/
 
