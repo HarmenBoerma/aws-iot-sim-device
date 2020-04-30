@@ -57,6 +57,8 @@ for i in 1 2 #3 4 5
 do
     # create own folder with files
     device_name="device_$i"
+
+    if ! test 
     mkdir -p $device_name
     cd $device_name
 

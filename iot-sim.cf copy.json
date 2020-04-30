@@ -1,0 +1,126 @@
+{
+"AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "",
+    "Metadata": {},
+    "Parameters": {
+        "InstanceType" : {
+            "Description" : "EC2 instance type",
+            "Type" : "String",
+            "Default" : "t2.micro",
+            "AllowedValues" : ["t2.micro"],
+            "ConstraintDescription" : "Must be a valid EC2 instance type."
+          },
+        "KeyName": {
+            "Description" : "Name of an existing EC2 key pair for SSH access to the EC2 instance.",
+            "Type": "AWS::EC2::KeyPair::KeyName"
+        }
+    },
+    "Resources": {     
+        "SSHSecurityGroup" : {
+            "Type" : "AWS::EC2::SecurityGroup",
+            "Properties" : {
+              "GroupDescription" : "Enable SSH access via port 22",
+              "SecurityGroupIngress" : [ { 
+                "IpProtocol" : "tcp", 
+                "FromPort" : 22, 
+                "ToPort" : 22, 
+                "CidrIp" : "0.0.0.0/0" } ]
+            }
+        },
+        "EC2IoTRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+               "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "ec2.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+               },
+            "Path": "/",
+            "Policies": [
+                {
+                    "PolicyName": "iot-all",
+                    "PolicyDocument": {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                            {
+                                "Effect": "Allow",
+                                "Action": [
+                                    "iot:*"
+                                ],
+                                "Resource": "*"
+                            }
+                        ]
+                    }
+                }
+            ],
+            "RoleName": "EC2IoTRole"
+            }
+         },        
+        "InstanceProfile": {
+            "Type": "AWS::IAM::InstanceProfile",
+            "Properties": {
+                "Path": "/",
+                "Roles": ["EC2IoTRole"]
+            },
+            "DependsOn": "EC2IoTRole"
+        },
+        "IoTSimulator": {
+            "Type": "AWS::EC2::Instance",
+            "Properties": {
+                "ImageId": "ami-06ce3edf0cff21f07",
+                "InstanceType": { "Ref": "InstanceType" },
+                "IamInstanceProfile": { "Ref": "InstanceProfile"},
+                "KeyName": {"Ref": "KeyName"},
+                "SecurityGroups": [ { "Ref": "SSHSecurityGroup"} ],
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "set -x\n",
+                                "#!/bin/bash\n",
+                                "# Get sim app\n",
+                                "sudo yum install git -y\n",
+                                "git clone https://github.com/HarmenBoerma/aws-iot-sim-device.git\n",
+                                "cd aws-iot-sim-device/\n",
+                                "# setup AWS credentials\n",
+                                "cp -r src/aws_config/ ~/.aws\n",
+                                "# start sim app\n",
+                                "bash start_devices.sh\n"
+                            ]
+                        ]
+                    }
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "InstanceId": {
+            "Description": "Instance id of newly created instance",
+            "Value": {"Ref" : "IoTSimulator"}
+        },
+        "AZ": {
+            "Description": "Availability Zone of newly created instance",
+            "Value": {"Fn::GetAtt" : ["IoTSimulator", "AvailabilityZone"]}
+        },
+        "PublicDNS": {
+            "Description": "Public DNS of newly created instance",
+            "Value": {"Fn::GetAtt" : ["IoTSimulator", "PublicDnsName"]}
+        },
+        "PublicIp": {
+            "Description": "Public ip of newly created instance",
+            "Value": {"Fn::GetAtt" : ["IoTSimulator", "PublicIp"]}
+        }
+    }
+}
