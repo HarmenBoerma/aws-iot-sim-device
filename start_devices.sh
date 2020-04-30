@@ -53,31 +53,30 @@ cd $root_folder
 mkdir -p devices
 cd devices
 
-for i in 1 2 #3 4 5
+for i in 1 2; #3 4 5
 do
-    # create own folder with files
-    device_name="device_$i"
+	# create own folder with files
+	device_name="device_$i"
 
-    if ! test 
-    mkdir -p $device_name
-    cd $device_name
+	mkdir -p $device_name
+	cd $device_name
 
-    # Copy files
-    cp -r $root_folder/src/AWSIoTPythonSDK .
-    cp $root_folder/src/private.key .
-    cp $root_folder/src/certificate.pem .
-    cp $root_folder/src/AmazonRootCA1.pem .
-    cp $root_folder/src/device.py .
+	# Copy files
+	cp -r $root_folder/src/AWSIoTPythonSDK .
+	cp $root_folder/src/private.key .
+	cp $root_folder/src/certificate.pem .
+	cp $root_folder/src/AmazonRootCA1.pem .
+	cp $root_folder/src/device.py .
 
-    aws iot create-thing --thing-name $device_name > thing_info.json
+	aws iot create-thing --thing-name $device_name > thing_info.json
 
-    # Attache certificate to thing
-    aws iot attach-thing-principal --thing-name $device_name --principal $cert_arn
-    echo "Created thing ($device_name)"
+	# Attache certificate to thing
+	aws iot attach-thing-principal --thing-name $device_name --principal $cert_arn
+	echo "Created thing ($device_name)"
 
-    nohup python3 device.py -e $endpoint -r "AmazonRootCA1.pem" -c "certificate.pem" -k "private.key" -id $(jq -r ".thingId" thing_info.json) -t "data" -n $(jq -r ".thingName" thing_info.json) &
+	nohup python3 device.py -e $endpoint -r "AmazonRootCA1.pem" -c "certificate.pem" -k "private.key" -id $(jq -r ".thingId" thing_info.json) -t "data" -n $(jq -r ".thingName" thing_info.json) &
 
-    cd ..
+	cd ..
 done
 
 
