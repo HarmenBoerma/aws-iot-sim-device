@@ -18,6 +18,8 @@ Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment; filename='userdata.txt'
 
 #!/bin/bash
+sleep 2m
+
 # Get sim app
 sudo yum install git -y
 git clone https://github.com/HarmenBoerma/aws-iot-sim-device.git

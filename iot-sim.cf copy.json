@@ -59,6 +59,11 @@
                                     "iot:*"
                                 ],
                                 "Resource": "*"
+                            },
+                            {
+                                "Effect": "Allow",
+                                "Action": "sts:*",
+                                "Resource": "*"
                             }
                         ]
                     }
