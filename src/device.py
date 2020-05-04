@@ -41,7 +41,7 @@ class SimDevice():
             messageJson = json.dumps(message)
             mqtt_client.publish(topic+"/"+device_name, messageJson, 1)
             print(message)
-            time.sleep(2)
+            time.sleep(5)
             
 # Read in command-line parameters
 parser = argparse.ArgumentParser()

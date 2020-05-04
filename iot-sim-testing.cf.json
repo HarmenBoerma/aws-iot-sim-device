@@ -1,0 +1,256 @@
+{
+"AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "",
+    "Metadata": {},
+    "Parameters": {
+        "InstanceType" : {
+            "Description" : "EC2 instance type",
+            "Type" : "String",
+            "Default" : "t2.micro",
+            "AllowedValues" : ["t2.micro"],
+            "ConstraintDescription" : "Must be a valid EC2 instance type."
+          },
+        "KeyName": {
+            "Description" : "Name of an existing EC2 key pair for SSH access to the EC2 instance.",
+            "Type": "AWS::EC2::KeyPair::KeyName",
+            "Default": "iot-test"
+        }
+    },
+    "Resources": {     
+        "SSHSecurityGroup" : {
+            "Type" : "AWS::EC2::SecurityGroup",
+            "Properties" : {
+              "GroupDescription" : "Enable SSH access via port 22",
+              "SecurityGroupIngress" : [ { 
+                "IpProtocol" : "tcp", 
+                "FromPort" : 22, 
+                "ToPort" : 22, 
+                "CidrIp" : "0.0.0.0/0" } ]
+            }
+        },
+        "EC2IoTRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+               "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "ec2.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+               },
+            "Path": "/",
+            "Policies": [
+                {
+                    "PolicyName": "iot-all",
+                    "PolicyDocument": {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                            {
+                                "Effect": "Allow",
+                                "Action": [
+                                    "iot:*"
+                                ],
+                                "Resource": "*"
+                            },
+                            {
+                                "Effect": "Allow",
+                                "Action": [
+                                    "iotanalytics:*"
+                                ],
+                                "Resource": "*"
+                            },
+                            {
+                                "Effect": "Allow",
+                                "Action": "sts:AssumeRole",
+                                "Resource": "arn:aws:iam::580868056031:role/EC2IoTRole"
+                            }
+                        ]
+                    }
+                }
+            ],
+            "RoleName": "EC2IoTRole"
+            }
+         },     
+        "IoTRuleRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                     "Version": "2012-10-17",
+                     "Statement": [
+                         {
+                             "Effect": "Allow",
+                             "Principal": {
+                                 "Service": [
+                                     "ec2.amazonaws.com"
+                                 ]
+                             },
+                             "Action": [
+                                 "sts:AssumeRole"
+                             ]
+                         }
+                     ]
+                },
+             "Path": "/service-role/",
+             "Policies": [
+                 {
+                    "PolicyName": "iot-rule",
+                    "PolicyDocument": {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                            {
+                                "Effect": "Allow",
+                                "Action": [
+                                    "iotanalytics:BatchPutMessage" 
+                                ],
+                                "Resource": [ { "Fn::Sub": "arn:aws:iotanalytics::${AWS::AccountId}:channel/${IoTChannel}" } ]
+                            }
+                        ]
+                     }
+                 }
+             ],
+            "RoleName": "IoTRuleRole"
+            },
+            "DependsOn": "IoTChannel"
+        },
+        "InstanceProfile": {
+            "Type": "AWS::IAM::InstanceProfile",
+            "Properties": {
+                "Path": "/",
+                "Roles": ["EC2IoTRole"]
+            },
+            "DependsOn": "EC2IoTRole"
+        },
+        "IoTSimulator": {
+            "Type": "AWS::EC2::Instance",
+            "Properties": {
+                "ImageId": "ami-06ce3edf0cff21f07",
+                "InstanceType": { "Ref": "InstanceType" },
+                "IamInstanceProfile": { "Ref": "InstanceProfile"},
+                "KeyName": {"Ref": "KeyName"},
+                "SecurityGroups": [ { "Ref": "SSHSecurityGroup"} ],
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "\n",
+                            [
+                                "#!/bin/bash",
+                                "set -x",
+                                "sleep 1m",
+                                "# Get sim app",
+                                "sudo yum install git -y",
+                                "git clone https://github.com/HarmenBoerma/aws-iot-sim-device.git",
+                                "cd aws-iot-sim-device/",
+                                "# setup AWS credentials",
+                                "cp -r src/aws_config/ ~/.aws",
+                                "# start sim app",
+                                "bash start_devices.sh"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "IoTChannel": {
+            "Type": "AWS::IoTAnalytics::Channel",
+            "Properties": {
+                "ChannelName": "IoTChannel"
+            }
+        },
+        "ToChannelRule": {
+            "Type": "AWS::IoT::TopicRule",
+            "Properties": {
+                "RuleName": "ToChannel",
+                "TopicRulePayload": {
+                    "Actions": [
+                        {
+                            "IotAnalytics": {
+                                "ChannelName": "IoTChannel",
+                                "RoleArn": { "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/${IoTRuleRole}" }
+                            }
+                        }
+                    ],
+                    "RuleDisabled": false,
+                    "Sql": "SELECT * FROM 'data/+'"
+                }
+            },
+            "DependsOn": [
+                "IoTChannel",
+                "IoTRuleRole"
+            ]
+        },
+        "IoTDatastore": {
+            "Type": "AWS::IoTAnalytics::Datastore",
+            "Properties": {
+                "DatastoreName": "IoTDatastore"
+            }
+        },
+        "IoTPipeline": {
+            "Type": "AWS::IoTAnalytics::Pipeline",
+            "DependsOn": [
+                "IoTChannel",
+                "IoTDatastore"
+            ],
+            "Properties": {
+                "PipelineName": "IoTPipeline",
+                "PipelineActivities": [
+                    {
+                        "Channel": {
+                            "Name": "ChannelActivity",
+                            "ChannelName": "IoTChannel",
+                            "Next": "DatastoreActivity"
+                        },
+                        "Datastore": {
+                            "Name": "DatastoreActivity",
+                            "DatastoreName": "IoTChannel"
+                        }
+                    }
+                ]
+            }
+        },
+        "IoTDataset": {
+            "Type": "AWS::IoTAnalytics::Dataset",
+            "Properties": {
+                "DatasetName": "AllData",
+                "Actions": [
+                    {
+                        "ActionName": "SqlAction",
+                        "QueryAction": {
+                            "SqlQuery": "select * from iotdatastore"
+                        }
+                    }
+                ],
+                "Triggers": [
+                    {
+                        "Schedule": {
+                            "ScheduleExpression": "cron(1 * * * ? *)"
+                        }
+                    }
+                ]
+            },
+            "DependsOn": "IoTDatastore"
+        }
+    },
+    "Outputs": {
+        "AZ": {
+            "Description": "Availability Zone of newly created instance",
+            "Value": {"Fn::GetAtt" : ["IoTSimulator", "AvailabilityZone"]}
+        },
+        "PublicDNS": {
+            "Description": "Public DNS of newly created instance",
+            "Value": {"Fn::GetAtt" : ["IoTSimulator", "PublicDnsName"]}
+        },
+        "PublicIp": {
+            "Description": "Public ip of newly created instance",
+            "Value": {"Fn::GetAtt" : ["IoTSimulator", "PublicIp"]}
+        }
+    }
+}
