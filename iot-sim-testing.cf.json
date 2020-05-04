@@ -80,47 +80,6 @@
             "RoleName": "EC2IoTRole"
             }
          },     
-        "IoTRuleRole": {
-            "Type": "AWS::IAM::Role",
-            "Properties": {
-                "AssumeRolePolicyDocument": {
-                     "Version": "2012-10-17",
-                     "Statement": [
-                         {
-                             "Effect": "Allow",
-                             "Principal": {
-                                 "Service": [
-                                     "ec2.amazonaws.com"
-                                 ]
-                             },
-                             "Action": [
-                                 "sts:AssumeRole"
-                             ]
-                         }
-                     ]
-                },
-             "Path": "/service-role/",
-             "Policies": [
-                 {
-                    "PolicyName": "iot-rule",
-                    "PolicyDocument": {
-                        "Version": "2012-10-17",
-                        "Statement": [
-                            {
-                                "Effect": "Allow",
-                                "Action": [
-                                    "iotanalytics:BatchPutMessage" 
-                                ],
-                                "Resource": [ { "Fn::Sub": "arn:aws:iotanalytics::${AWS::AccountId}:channel/${IoTChannel}" } ]
-                            }
-                        ]
-                     }
-                 }
-             ],
-            "RoleName": "IoTRuleRole"
-            },
-            "DependsOn": "IoTChannel"
-        },
         "InstanceProfile": {
             "Type": "AWS::IAM::InstanceProfile",
             "Properties": {
@@ -158,85 +117,6 @@
                     }
                 }
             }
-        },
-        "IoTChannel": {
-            "Type": "AWS::IoTAnalytics::Channel",
-            "Properties": {
-                "ChannelName": "IoTChannel"
-            }
-        },
-        "ToChannelRule": {
-            "Type": "AWS::IoT::TopicRule",
-            "Properties": {
-                "RuleName": "ToChannel",
-                "TopicRulePayload": {
-                    "Actions": [
-                        {
-                            "IotAnalytics": {
-                                "ChannelName": "IoTChannel",
-                                "RoleArn": { "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/${IoTRuleRole}" }
-                            }
-                        }
-                    ],
-                    "RuleDisabled": false,
-                    "Sql": "SELECT * FROM 'data/+'"
-                }
-            },
-            "DependsOn": [
-                "IoTChannel",
-                "IoTRuleRole"
-            ]
-        },
-        "IoTDatastore": {
-            "Type": "AWS::IoTAnalytics::Datastore",
-            "Properties": {
-                "DatastoreName": "IoTDatastore"
-            }
-        },
-        "IoTPipeline": {
-            "Type": "AWS::IoTAnalytics::Pipeline",
-            "DependsOn": [
-                "IoTChannel",
-                "IoTDatastore"
-            ],
-            "Properties": {
-                "PipelineName": "IoTPipeline",
-                "PipelineActivities": [
-                    {
-                        "Channel": {
-                            "Name": "ChannelActivity",
-                            "ChannelName": "IoTChannel",
-                            "Next": "DatastoreActivity"
-                        },
-                        "Datastore": {
-                            "Name": "DatastoreActivity",
-                            "DatastoreName": "IoTChannel"
-                        }
-                    }
-                ]
-            }
-        },
-        "IoTDataset": {
-            "Type": "AWS::IoTAnalytics::Dataset",
-            "Properties": {
-                "DatasetName": "AllData",
-                "Actions": [
-                    {
-                        "ActionName": "SqlAction",
-                        "QueryAction": {
-                            "SqlQuery": "select * from iotdatastore"
-                        }
-                    }
-                ],
-                "Triggers": [
-                    {
-                        "Schedule": {
-                            "ScheduleExpression": "cron(1 * * * ? *)"
-                        }
-                    }
-                ]
-            },
-            "DependsOn": "IoTDatastore"
         }
     },
     "Outputs": {

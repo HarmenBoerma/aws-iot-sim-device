@@ -39,7 +39,7 @@ class SimDevice():
                 "sound": random.randint(100, 140)
             }
             messageJson = json.dumps(message)
-            mqtt_client.publish(topic+"/"+device_name, messageJson, 1)
+            mqtt_client.publish(topic, messageJson, 1)
             print(message)
             time.sleep(10)
             
